@@ -4,7 +4,7 @@
 // Incrementing CACHE_VERSION will kick off the install event and force
 // previously cached resources to be updated from the network.
 /** @type {string} */
-const CACHE_VERSION = '1784630782|259270142';
+const CACHE_VERSION = '1784634351|104415109';
 /** @type {string} */
 const CACHE_PREFIX = 'guster-sw-cache-';
 const CACHE_NAME = CACHE_PREFIX + CACHE_VERSION;
