@@ -90,6 +90,25 @@ body {
 	z-index: 1;
 }
 		</style>
+		<script>
+    // Place this at the very top of your script block, before Godot runs
+    const originalFetch = window.fetch;
+    window.fetch = async function(...args) {
+        const response = await originalFetch(...args);
+
+        // Check if the browser is fetching your compressed index.wasm
+        if (args[0].endsWith('index.wasm')) {
+            // Decompress the Brotli/Gzip stream on the fly
+            const ds = new DecompressionStream("br"); // Use "gzip" if you compressed with gzip
+            const decompressedStream = response.body.pipeThrough(ds);
+
+            return new Response(decompressedStream, {
+                headers: { 'Content-Type': 'application/wasm' }
+            });
+        }
+        return response;
+    };
+		</script>
 		<link id="-gd-engine-icon" rel="icon" type="image/png" href="index.icon.png" />
 <link rel="apple-touch-icon" href="index.apple-touch-icon.png"/>
 <link rel="manifest" href="index.manifest.json">
