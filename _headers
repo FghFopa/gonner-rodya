@@ -1,0 +1,4 @@
+/index.wasm.br
+  Content-Encoding: br
+  Content-Type: application/wasm
+  Cache-Control: no-transform
