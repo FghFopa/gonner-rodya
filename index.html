@@ -90,25 +90,6 @@ body {
 	z-index: 1;
 }
 		</style>
-		<script>
-    // Place this at the very top of your script block, before Godot runs
-    const originalFetch = window.fetch;
-    window.fetch = async function(...args) {
-        const response = await originalFetch(...args);
-
-        // Check if the browser is fetching your compressed index.wasm
-        if (args[0].endsWith('index.wasm')) {
-            // Decompress the Brotli/Gzip stream on the fly
-            const ds = new DecompressionStream("br"); // Use "gzip" if you compressed with gzip
-            const decompressedStream = response.body.pipeThrough(ds);
-
-            return new Response(decompressedStream, {
-                headers: { 'Content-Type': 'application/wasm' }
-            });
-        }
-        return response;
-    };
-		</script>
 		<link id="-gd-engine-icon" rel="icon" type="image/png" href="index.icon.png" />
 <link rel="apple-touch-icon" href="index.apple-touch-icon.png"/>
 <link rel="manifest" href="index.manifest.json">
@@ -128,10 +109,26 @@ body {
 			<progress id="status-progress"></progress>
 			<div id="status-notice"></div>
 		</div>
+		<script>
+    // Place this right before your main Godot initialization script
+    const originalFetch = window.fetch;
+    window.fetch = function(...args) {
+        let url = typeof args[0] === 'string' ? args[0] : args[0]?.url;
 
+        if (url && url.endsWith('index.wasm')) {
+            // Re-route Godot's internal request from .wasm to .wasm.br
+            if (typeof args[0] === 'string') {
+                args[0] = url + '.br';
+            } else {
+                args[0] = new Request(url + '.br', args[0]);
+            }
+        }
+        return originalFetch(...args);
+    };
+		</script>
 		<script src="index.js"></script>
 		<script>
-const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":14177668,"index.wasm":38817643},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4,"serviceWorker":"index.service.worker.js"};
+const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":14165856,"index.wasm":38817643},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4,"serviceWorker":"index.service.worker.js"};
 const GODOT_THREADS_ENABLED = true;
 const engine = new Engine(GODOT_CONFIG);
 
