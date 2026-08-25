@@ -1,0 +1,7 @@
+/*
+ C ross-Origin-Opener-Policy: sa*me-origin
+ Cross-Origin-Embedder-Policy: require-corp
+
+ /*.wasm.br
+  C ontent-Encoding: br          *
+  Content-Type: application/wasm

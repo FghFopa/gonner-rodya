@@ -91,9 +91,8 @@ body {
 }
 		</style>
 		<link id="-gd-engine-icon" rel="icon" type="image/png" href="index.icon.png" />
-<link rel="apple-touch-icon" href="index.apple-touch-icon.png"/>
-<link rel="manifest" href="index.manifest.json">
-
+		<link rel="apple-touch-icon" href="index.apple-touch-icon.png"/>
+		<link rel="manifest" href="index.manifest.json">
 	</head>
 	<body>
 		<canvas id="canvas">
@@ -112,7 +111,51 @@ body {
 
 		<script src="index.js"></script>
 		<script>
-const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":14171500,"index.wasm":38817643},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4,"serviceWorker":"index.service.worker.js"};
+// Перехватываем ТОЛЬКО index.wasm для загрузки index.wasm.br
+const originalFetch = window.fetch;
+window.fetch = async function(...args) {
+	let [resource, config] = args;
+	let url = typeof resource === 'string' ? resource : resource.url;
+
+	if (url.endsWith('index.wasm')) {
+		const brUrl = url + '.br';
+		try {
+			const response = await originalFetch(brUrl, config);
+			if (response.ok) {
+				if (!response.headers.get('Content-Encoding')?.includes('br') && 'DecompressionStream' in window) {
+					const decompressedStream = response.body.pipeThrough(new DecompressionStream('br'));
+					return new Response(decompressedStream, {
+						headers: {
+							'Content-Type': 'application/wasm'
+						}
+					});
+				}
+				return response;
+			}
+		} catch (e) {
+			console.warn('Brotli fallback for WASM failed, loading standard file:', e);
+		}
+	}
+	return originalFetch(...args);
+};
+
+const GODOT_CONFIG = {
+	"args": [],
+	"canvasResizePolicy": 2,
+	"emscriptenPoolSize": 8,
+	"ensureCrossOriginIsolationHeaders": true,
+	"executable": "index",
+	"experimentalVK": false,
+	"fileSizes": {
+		"index.pck": 14171500,
+		"index.wasm.br": 38817643
+	},
+	"focusCanvas": true,
+	"gdextensionLibs": [],
+	"godotPoolSize": 4,
+	"serviceWorker": "index.service.worker.js"
+};
+
 const GODOT_THREADS_ENABLED = true;
 const engine = new Engine(GODOT_CONFIG);
 
@@ -175,7 +218,6 @@ const engine = new Engine(GODOT_CONFIG);
 			} catch (err) {
 				serviceWorkerRegistrationPromise = Promise.reject(new Error('Service worker registration failed.'));
 			}
-			// There's a chance that installing the service worker would fix the issue
 			Promise.race([
 				serviceWorkerRegistrationPromise.then((registration) => {
 					if (registration != null) {
@@ -183,18 +225,15 @@ const engine = new Engine(GODOT_CONFIG);
 					}
 					return registration;
 				}).then(() => engine.installServiceWorker()),
-				// For some reason, `getRegistration()` can stall
 				new Promise((resolve) => {
 					setTimeout(() => resolve(), 2000);
 				}),
 			]).then(() => {
-				// Reload if there was no error.
 				window.location.reload();
 			}).catch((err) => {
 				console.error('Error while registering service worker:', err);
 			});
 		} else {
-			// Display the message as usual
 			const missingMsg = 'Error\nThe following features required to run Godot projects on the Web are missing:\n';
 			displayFailureNotice(missingMsg + missing.join('\n'));
 		}
@@ -218,4 +257,3 @@ const engine = new Engine(GODOT_CONFIG);
 		</script>
 	</body>
 </html>
-
