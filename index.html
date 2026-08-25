@@ -111,29 +111,17 @@ body {
 
 		<script src="index.js"></script>
 		<script>
-// Перехватываем ТОЛЬКО index.wasm для загрузки index.wasm.br
+// Перехват системных fetch-запросов для загрузки .br
 const originalFetch = window.fetch;
-window.fetch = async function(...args) {
+window.fetch = function(...args) {
 	let [resource, config] = args;
 	let url = typeof resource === 'string' ? resource : resource.url;
 
 	if (url.endsWith('index.wasm')) {
-		const brUrl = url + '.br';
-		try {
-			const response = await originalFetch(brUrl, config);
-			if (response.ok) {
-				if (!response.headers.get('Content-Encoding')?.includes('br') && 'DecompressionStream' in window) {
-					const decompressedStream = response.body.pipeThrough(new DecompressionStream('br'));
-					return new Response(decompressedStream, {
-						headers: {
-							'Content-Type': 'application/wasm'
-						}
-					});
-				}
-				return response;
-			}
-		} catch (e) {
-			console.warn('Brotli fallback for WASM failed, loading standard file:', e);
+		if (typeof resource === 'string') {
+			args[0] = url + '.br';
+		} else {
+			args[0] = new Request(url + '.br', resource);
 		}
 	}
 	return originalFetch(...args);
@@ -158,6 +146,31 @@ const GODOT_CONFIG = {
 
 const GODOT_THREADS_ENABLED = true;
 const engine = new Engine(GODOT_CONFIG);
+
+	if ('serviceWorker' in navigator) {
+		window.addEventListener('load', () => {
+			navigator.serviceWorker.register('index.service.worker.js').then((registration) => {
+				registration.update();
+				registration.onupdatefound = () => {
+					const newWorker = registration.installing;
+					if (!newWorker) return;
+					newWorker.onstatechange = () => {
+						if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+							newWorker.postMessage('claim');
+						}
+					};
+				};
+			});
+			let refreshing = false;
+			navigator.serviceWorker.addEventListener('controllerchange', () => {
+				if (!refreshing) {
+					refreshing = true;
+					window.location.reload();
+				}
+			});
+		});
+	}
+
 
 (function () {
 	const statusOverlay = document.getElementById('status');
@@ -206,37 +219,22 @@ const engine = new Engine(GODOT_CONFIG);
 		initializing = false;
 	}
 
+	// Регистрация Service Worker для PWA
+	if ('serviceWorker' in navigator) {
+		window.addEventListener('load', () => {
+			navigator.serviceWorker.register('index.service.worker.js').catch((err) => {
+				console.warn('Service Worker registration failed: ', err);
+			});
+		});
+	}
+
 	const missing = Engine.getMissingFeatures({
 		threads: GODOT_THREADS_ENABLED,
 	});
 
 	if (missing.length !== 0) {
-		if (GODOT_CONFIG['serviceWorker'] && GODOT_CONFIG['ensureCrossOriginIsolationHeaders'] && 'serviceWorker' in navigator) {
-			let serviceWorkerRegistrationPromise;
-			try {
-				serviceWorkerRegistrationPromise = navigator.serviceWorker.getRegistration();
-			} catch (err) {
-				serviceWorkerRegistrationPromise = Promise.reject(new Error('Service worker registration failed.'));
-			}
-			Promise.race([
-				serviceWorkerRegistrationPromise.then((registration) => {
-					if (registration != null) {
-						return Promise.reject(new Error('Service worker already exists.'));
-					}
-					return registration;
-				}).then(() => engine.installServiceWorker()),
-				new Promise((resolve) => {
-					setTimeout(() => resolve(), 2000);
-				}),
-			]).then(() => {
-				window.location.reload();
-			}).catch((err) => {
-				console.error('Error while registering service worker:', err);
-			});
-		} else {
-			const missingMsg = 'Error\nThe following features required to run Godot projects on the Web are missing:\n';
-			displayFailureNotice(missingMsg + missing.join('\n'));
-		}
+		const missingMsg = 'Error\nThe following features required to run Godot projects on the Web are missing:\n';
+		displayFailureNotice(missingMsg + missing.join('\n'));
 	} else {
 		setStatusMode('progress');
 		engine.startGame({
