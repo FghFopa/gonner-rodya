@@ -109,26 +109,10 @@ body {
 			<progress id="status-progress"></progress>
 			<div id="status-notice"></div>
 		</div>
-		<script>
-    // Place this right before your main Godot initialization script
-    const originalFetch = window.fetch;
-    window.fetch = function(...args) {
-        let url = typeof args[0] === 'string' ? args[0] : args[0]?.url;
 
-        if (url && url.endsWith('index.wasm')) {
-            // Re-route Godot's internal request from .wasm to .wasm.br
-            if (typeof args[0] === 'string') {
-                args[0] = url + '.br';
-            } else {
-                args[0] = new Request(url + '.br', args[0]);
-            }
-        }
-        return originalFetch(...args);
-    };
-		</script>
 		<script src="index.js"></script>
 		<script>
-const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":14165856,"index.wasm":38817643},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4,"serviceWorker":"index.service.worker.js"};
+const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":14171500,"index.wasm":38817643},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4,"serviceWorker":"index.service.worker.js"};
 const GODOT_THREADS_ENABLED = true;
 const engine = new Engine(GODOT_CONFIG);
 
